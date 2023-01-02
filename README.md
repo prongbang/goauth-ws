@@ -23,7 +23,7 @@ curl http://localhost:8080/device/publish?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX
 Output
 
 ```json
-{"id":"1e4832e7-1ffa-4cf4-b9d9-0b8eff286c52","name":"Temp"}
+{"message":"published"}
 ```
 
 ### Test with MQTTX
