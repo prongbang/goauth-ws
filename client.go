@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gobwas/ws/wsutil"
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -43,9 +42,7 @@ func (c *Client) ReadMessage() {
 	for {
 		message, _, err := wsutil.ReadClientData(c.conn)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("Error: %v", err)
-			}
+			log.Printf("Error: %v", err)
 			break
 		}
 		c.hub.broadcast <- message

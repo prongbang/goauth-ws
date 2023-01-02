@@ -7,12 +7,8 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gobwas/ws"
+	"github.com/labstack/echo/v4"
 )
-
-type Device struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
 
 func main() {
 
@@ -20,20 +16,57 @@ func main() {
 	deviceHub := NewHub()
 	go deviceHub.Run()
 
-	http.HandleFunc("/device", func(w http.ResponseWriter, r *http.Request) {
+	e := echo.New()
+	e.Static("/", "./public")
 
-		token := r.URL.Query().Get("token")
-		fmt.Println("token:", token)
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 
-		conn, _, _, err := ws.UpgradeHTTP(r, w)
+			// Bypass root path
+			if c.Request().URL.Path == "/" {
+				return next(c)
+			}
+
+			// Get token
+			token := c.QueryParam("token")
+
+			// Validate token
+			jwt := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+			if token == jwt {
+				return next(c)
+			}
+
+			return echo.ErrUnauthorized
+		}
+	})
+
+	e.Any("/device/:id", func(c echo.Context) error {
+
+		id := c.Param("id")
+		fmt.Println("id:", id)
+
+		// Upgrade websocket
+		conn, _, _, err := ws.UpgradeHTTP(c.Request(), c.Response())
 		if err != nil {
 			fmt.Println(err)
 		}
 
+		// Register client
 		client := &Client{hub: deviceHub, conn: conn, send: make(chan []byte, 256)}
 		client.hub.register <- client
 
+		// Write message
 		go client.WriteMessage()
+
+		return nil
+	})
+
+	e.GET("/device/publish", func(c echo.Context) error {
+
+		// Broadcast
+		deviceHub.Broadcast([]byte(`{"id": "1e4832e7-1ffa-4cf4-b9d9-0b8eff286c52", "name": "Temp"}`))
+
+		return c.JSON(http.StatusOK, echo.Map{"message": "published"})
 	})
 
 	// Mqtt --------------------------------------------------------------------------------
@@ -65,10 +98,5 @@ func main() {
 		fmt.Println(token.Error())
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "index.html")
-	})
-
-	fmt.Println("Listening *:8080")
-	http.ListenAndServe(":8080", nil)
+	e.Logger.Fatal(e.Start(":8080"))
 }

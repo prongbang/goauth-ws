@@ -7,20 +7,28 @@
     let output = document.getElementById("output");
 
     const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-    
-    let socket = new WebSocket("ws://localhost:8080/device?token=" + token);
+
+    const id = "1";
+    let socket = new WebSocket(`ws://localhost:8080/device/${id}?token=${token}`);
 
     socket.onopen = function () {
-        output.innerHTML += "Connected\n";
+        output.innerHTML += "<li>Status: Connected</li>";
     };
-
+    socket.onclose = function (event) {
+        console.log(event);
+        output.innerHTML += `<li>Status: Close ${event.code}</li>`;
+    }
+    socket.onerror = function (event) {
+        console.log(event)
+        output.innerHTML += "<li>Status: Error</li>";
+    }
     socket.onmessage = function (e) {
         if (e.data instanceof Blob) {
-            e.data.text().then((text)=> {
-                output.innerHTML += "\nServer: " + text + "\n";
+            e.data.text().then((text) => {
+                output.innerHTML += "<li>Received: " + text + "</li>";
             });
         } else {
-            output.innerHTML += "\nServer: " + e.data + "\n";
+            output.innerHTML += "<li>Received: " + e.data + "</li>";
         }
     };
 
